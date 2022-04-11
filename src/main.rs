@@ -12,6 +12,7 @@ use crossterm::{
 struct Config {
     pub border: Vec<char>,
     pub center: bool,
+    pub stretch: bool,
     pub position: (u16, u16),
     pub query: Vec<String>,
     pub length: u16,
@@ -21,6 +22,7 @@ impl Config {
     fn new(args: Args) -> Self {
         let mut border = vec!['┌', '─', '┐', '│', '└', '┘'];
         let mut center = false;
+        let mut stretch = false;
         let mut position = crossterm::cursor::position().expect("Could not get cursor position");
         let mut query: Vec<String> = Vec::new();
         let mut length = 8;
@@ -67,6 +69,10 @@ impl Config {
                                 center = true;
                                 continue;
                             }
+                            "s" => {
+                                stretch = true;
+                                continue;
+                            }
                             "h" => {
                                 print_help();
                                 continue;
@@ -92,6 +98,7 @@ impl Config {
         Self {
             border,
             center,
+            stretch,
             position,
             query,
             length,
@@ -124,6 +131,8 @@ fn print_help() {
         "        Default: current cursor position\n",
         "    -c\n",
         "        Center the box on the screen.\n",
+        "    -s\n",
+        "        Makes the box stretch to the terminal's sides.\n",
         "    -h\n",
         "        Print this help message and exit.\n",
     ));
@@ -136,20 +145,31 @@ fn main() {
     let stderr = &mut stderr();
     let mut positions: Vec<(u16, u16)> = Vec::new();
 
-    let length = query
-        .iter()
-        .map(|q| q.len() as u16 - q.ends_with("?>") as u16 * 2)
-        .max()
-        .unwrap()
-        + config.length;
+    let stretch = config.stretch;
+    let length = if stretch {
+        let (width, _) = crossterm::terminal::size().expect("Could not get terminal size");
+        width - 3
+    } else {
+        query
+            .iter()
+            .map(|q| q.len() as u16 - q.ends_with("?>") as u16 * 2)
+            .max()
+            .unwrap()
+            + config.length
+    };
 
     let center = config.center;
-    let (sx, sy) = if center {
+    let (mut sx, sy) = if center {
         let (sx, sy) = crossterm::terminal::size().expect("Failed to get terminal size");
         (sx / 2 - length / 2 - 2, sy / 2 - query.len() as u16 / 2 - 2)
     } else {
         config.position
     };
+
+    if stretch {
+        sx = 0;
+    }
+    let sx = sx;
     cursor(stderr, sx, sy);
 
     let mut sy = sy + 1;

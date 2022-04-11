@@ -22,6 +22,8 @@ Options:
         Default: current cursor position
     -c
         Center the box on the screen.
+    -s
+        Makes the box stretch to the terminal's sides.
     -h
         Print this help message and exit.
 ```
