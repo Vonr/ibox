@@ -11,10 +11,11 @@ Example:
     ibox -l=24 'Title' 'Context' 'Question: ?>'
 Options:
     -b=BORDER
-        Specify the border characters.
+        Specify the border characters or presets.
+        Presets: single (default), double, thick, curved
         Default: ┌─┐│└┘
     -l=LENGTH
-        Specify the max length of the input.
+        Specify the added length of the input space after the longest line.
         Default: 8
     -p=X,Y
         Specify the position of the top left corner of the box.
