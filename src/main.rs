@@ -32,7 +32,7 @@ impl Config {
                     finished = true;
                 } else if arg.starts_with('-') {
                     let trimmed = arg.trim_start_matches('-');
-                    if trimmed.contains("=") {
+                    if trimmed.contains('=') {
                         if let Some(stripped) = trimmed.strip_prefix("b=") {
                             border = stripped.chars().collect::<Vec<char>>();
                             if border.len() != 6 {
@@ -187,7 +187,7 @@ fn main() {
     print!("{}", input);
 }
 
-fn top(title: Option<&String>, border: &Vec<char>, length: u16) -> String {
+fn top(title: Option<&String>, border: &[char], length: u16) -> String {
     let mut top = String::new();
     top.push(border[0]);
     top.push(border[1]);
@@ -202,7 +202,7 @@ fn top(title: Option<&String>, border: &Vec<char>, length: u16) -> String {
     top
 }
 
-fn mid(text: &String, border: &Vec<char>, length: u16) -> (String, Option<(u16, u16)>) {
+fn mid(text: &String, border: &[char], length: u16) -> (String, Option<(u16, u16)>) {
     let mut mid = String::new();
     mid.push(border[3]);
     if let Some(question) = text.strip_suffix("?>") {
@@ -228,7 +228,7 @@ fn mid(text: &String, border: &Vec<char>, length: u16) -> (String, Option<(u16, 
     }
 }
 
-fn bot(border: &Vec<char>, length: u16) -> String {
+fn bot(border: &[char], length: u16) -> String {
     let mut bot = String::new();
     bot.push(border[4]);
     bot.push(border[1]);
