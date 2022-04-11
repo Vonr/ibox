@@ -16,4 +16,4 @@ edition = "2021"
 # Read from stderr rather than stdout on unix systems.
 # This is not a proper fix for the issue, but it's a workaround.
 # I may file an issue to the crossterm repo to add a proper fix.
-crossterm = { git = "https://github.com/Vonr/crossterm" }
+crossterm = { git = "https://github.com/Vonr/crossterm", rev = "ff22dec6e888257f15d127a3a29c7e16c5ee2fc4" }
