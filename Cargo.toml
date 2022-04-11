@@ -1,6 +1,12 @@
 [package]
 name = "ibox"
 version = "0.1.0"
+description = "Simple input box drawing command line utility."
+license = "Unlicense"
+readme = "README.md"
+homepage = "https://github.com/Vonr/ibox"
+repository = "https://github.com/Vonr/ibox"
+keywords = ["cli", "input"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
