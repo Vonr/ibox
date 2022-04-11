@@ -34,9 +34,17 @@ impl Config {
                     let trimmed = arg.trim_start_matches('-');
                     if trimmed.contains('=') {
                         if let Some(stripped) = trimmed.strip_prefix("b=") {
-                            border = stripped.chars().collect::<Vec<char>>();
-                            if border.len() != 6 {
-                                error(&format!("Invalid border length: {}", border.len()));
+                            match stripped {
+                                "single" => (),
+                                "double" => border = vec!['╔', '═', '╗', '║', '╚', '╝'],
+                                "thick" => border = vec!['┏', '━', '┓', '┃', '┗', '┛'],
+                                "curved" => border = vec!['╭', '─', '╮', '│', '╰', '╯'],
+                                _ => {
+                                    border = stripped.chars().collect::<Vec<char>>();
+                                    if border.len() != 6 {
+                                        error(&format!("Invalid border length: {}", border.len()));
+                                    }
+                                }
                             }
                             continue;
                         } else if let Some(stripped) = trimmed.strip_prefix("l=") {
