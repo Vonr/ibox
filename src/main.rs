@@ -11,13 +11,17 @@ use crossterm::{
 
 struct Config {
     pub border: Vec<char>,
+    pub center: bool,
+    pub position: (u16, u16),
     pub query: Vec<String>,
-    pub length: usize,
+    pub length: u16,
 }
 
 impl Config {
     fn new(args: Args) -> Self {
         let mut border = vec!['┌', '─', '┐', '│', '└', '┘'];
+        let mut center = false;
+        let mut position = crossterm::cursor::position().expect("Could not get cursor position");
         let mut query: Vec<String> = Vec::new();
         let mut length = 8;
         let mut finished = false;
@@ -32,20 +36,41 @@ impl Config {
                         if let Some(stripped) = trimmed.strip_prefix("b=") {
                             border = stripped.chars().collect::<Vec<char>>();
                             if border.len() != 6 {
-                                eprintln!("Invalid border length: {}", border.len());
-                                exit(1);
+                                error(&format!("Invalid border length: {}", border.len()));
                             }
                             continue;
                         } else if let Some(stripped) = trimmed.strip_prefix("l=") {
-                            length = stripped.parse::<usize>().unwrap_or(8);
+                            length = stripped.parse::<u16>().unwrap_or(8);
                             continue;
+                        } else if let Some(stripped) = trimmed.strip_prefix("p=") {
+                            if let Some((x, y)) = stripped.split_once(',') {
+                                if let Ok(x) = x.parse::<u16>() {
+                                    if let Ok(y) = y.parse::<u16>() {
+                                        position = (x, y);
+                                        continue;
+                                    }
+                                }
+                            }
+                            error("Invalid position");
                         }
-                    } else if trimmed == "h" {
-                        print_help();
-                        continue;
                     } else {
-                        finished = true;
+                        match trimmed {
+                            "c" => {
+                                center = true;
+                                continue;
+                            }
+                            "h" => {
+                                print_help();
+                                continue;
+                            }
+                            _ => {
+                                eprintln!("Invalid argument: {}", arg);
+                                exit(1);
+                            }
+                        }
                     }
+                } else {
+                    finished = true;
                 }
             }
 
@@ -58,6 +83,8 @@ impl Config {
 
         Self {
             border,
+            center,
+            position,
             query,
             length,
         }
@@ -77,13 +104,18 @@ fn print_help() {
         "Example:\n",
         "    ibox -l=24 'Title' 'Context' 'Question: ?>'\n",
         "Options:\n",
-        "    -b=BORDER, --border=BORDER\n",
+        "    -b=BORDER\n",
         "        Specify the border characters.\n",
         "        Default: ┌─┐│└┘\n",
-        "    -l=LENGTH, --length=LENGTH\n",
+        "    -l=LENGTH\n",
         "        Specify the max length of the input.\n",
         "        Default: 8\n",
-        "    -h, --help\n",
+        "    -p=X,Y\n",
+        "        Specify the position of the top left corner of the box.\n",
+        "        Default: current cursor position\n",
+        "    -c\n",
+        "        Center the box on the screen.\n",
+        "    -h\n",
         "        Print this help message and exit.\n",
     ));
 }
@@ -93,11 +125,25 @@ fn main() {
     let border = config.border;
     let query = config.query;
     let stderr = &mut stderr();
-    let (sx, sy) = crossterm::cursor::position().expect("Failed to get cursor position");
-    let mut sy = sy + 1;
     let mut positions: Vec<(u16, u16)> = Vec::new();
 
-    let length = query.iter().map(|q| q.len()).max().unwrap() + config.length;
+    let length = query
+        .iter()
+        .map(|q| q.len() as u16 - q.ends_with("?>") as u16 * 2)
+        .max()
+        .unwrap()
+        + config.length;
+
+    let center = config.center;
+    let (sx, sy) = if center {
+        let (sx, sy) = crossterm::terminal::size().expect("Failed to get terminal size");
+        (sx / 2 - length / 2 - 2, sy / 2 - query.len() as u16 / 2 - 2)
+    } else {
+        config.position
+    };
+    cursor(stderr, sx, sy);
+
+    let mut sy = sy + 1;
 
     eprintln!("{}", top(query.get(0), &border, length));
 
@@ -118,7 +164,7 @@ fn main() {
 
     let mut input = String::new();
     for (x, y) in positions {
-        let end_pos = crossterm::cursor::position().expect("Failed to get cursor position");
+        let (ex, ey) = crossterm::cursor::position().expect("Failed to get cursor position");
         loop {
             force_cursor(stderr, x, y);
             match read().expect("Failed to read input") {
@@ -134,20 +180,20 @@ fn main() {
             }
         }
 
-        cursor(stderr, end_pos.0, end_pos.1);
+        cursor(stderr, ex, ey);
         input.push('\n');
     }
 
     print!("{}", input);
 }
 
-fn top(title: Option<&String>, border: &Vec<char>, length: usize) -> String {
+fn top(title: Option<&String>, border: &Vec<char>, length: u16) -> String {
     let mut top = String::new();
     top.push(border[0]);
     top.push(border[1]);
     if let Some(title) = title {
         top.push_str(title);
-        for _ in 0..(length - title.len()) {
+        for _ in 0..(length - title.len() as u16) {
             top.push(border[1]);
         }
     }
@@ -156,24 +202,25 @@ fn top(title: Option<&String>, border: &Vec<char>, length: usize) -> String {
     top
 }
 
-fn mid(text: &String, border: &Vec<char>, length: usize) -> (String, Option<(u16, u16)>) {
+fn mid(text: &String, border: &Vec<char>, length: u16) -> (String, Option<(u16, u16)>) {
     let mut mid = String::new();
     mid.push(border[3]);
     if let Some(question) = text.strip_suffix("?>") {
         if let Ok((x, y)) = crossterm::cursor::position() {
+            let question_len = question.len() as u16;
             mid.push_str(question);
-            for _ in 0..(length - question.len() + 1) {
+            for _ in 0..(length - question_len + 1) {
                 mid.push(' ');
             }
             mid.push(border[3]);
-            return (mid, Some((x + 1 + question.len() as u16, y)));
+            return (mid, Some((x + 1 + question_len as u16, y)));
         }
 
         error("Cannot get cursor position");
         exit(1);
     } else {
         mid.push_str(text);
-        for _ in 0..(length - text.len() + 1) {
+        for _ in 0..(length - text.len() as u16 + 1) {
             mid.push(' ');
         }
         mid.push(border[3]);
@@ -181,7 +228,7 @@ fn mid(text: &String, border: &Vec<char>, length: usize) -> (String, Option<(u16
     }
 }
 
-fn bot(border: &Vec<char>, length: usize) -> String {
+fn bot(border: &Vec<char>, length: u16) -> String {
     let mut bot = String::new();
     bot.push(border[4]);
     bot.push(border[1]);
