@@ -72,10 +72,10 @@ fn error(msg: &str) {
 
 fn print_help() {
     eprintln!(concat!(
-        "Usage: ibox [OPTION]... QUERY\n",
+        "Usage: ibox [OPTION]... [QUERY]...\n",
         "Search for QUERY in FILES.\n",
         "Example:\n",
-        "    ibox -l=24 'Title' 'Context' 'Question?>'\n",
+        "    ibox -l=24 'Title' 'Context' 'Question: ?>'\n",
         "Options:\n",
         "    -b=BORDER, --border=BORDER\n",
         "        Specify the border characters.\n",
@@ -92,6 +92,9 @@ fn main() {
     let config = Config::new(env::args());
     let border = config.border;
     let query = config.query;
+    let stderr = &mut stderr();
+    let (sx, sy) = crossterm::cursor::position().expect("Failed to get cursor position");
+    let mut sy = sy + 1;
     let mut positions: Vec<(u16, u16)> = Vec::new();
 
     let length = query.iter().map(|q| q.len()).max().unwrap() + config.length;
@@ -100,18 +103,20 @@ fn main() {
 
     if query.len() > 1 {
         for q in query.iter().skip(1) {
+            cursor(stderr, sx, sy);
             let (text, new_pos) = mid(q, &border, length);
             if let Some(new_pos) = new_pos {
                 positions.push(new_pos);
             }
             eprintln!("{}", text);
+            sy += 1;
         }
     }
+    cursor(stderr, sx, sy);
 
     eprintln!("{}", bot(&border, length));
 
     let mut input = String::new();
-    let stderr = &mut stderr();
     for (x, y) in positions {
         let end_pos = crossterm::cursor::position().expect("Failed to get cursor position");
         loop {
@@ -133,7 +138,7 @@ fn main() {
         input.push('\n');
     }
 
-    println!("{}", input);
+    print!("{}", input);
 }
 
 fn top(title: Option<&String>, border: &Vec<char>, length: usize) -> String {
