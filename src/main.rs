@@ -161,7 +161,7 @@ fn main() {
     let center = config.center;
     let (mut sx, sy) = if center {
         let (sx, sy) = crossterm::terminal::size().expect("Failed to get terminal size");
-        (sx / 2 - length / 2 - 2, sy / 2 - query.len() as u16 / 2 - 2)
+        (sx / 2 - length / 2 - 2, sy / 2 - query.len() as u16 / 2)
     } else {
         config.position
     };
